@@ -1,0 +1,194 @@
+<html> 
+    <head>
+    <style>
+        body { 
+            margin: 0;
+            overflow:hidden;
+        }
+    </style>
+    </head>
+    <body>
+        <script type = "module">
+        import * as THREE from "https://web.cs.manchester.ac.uk/three/three.js-master/build/three.module.js";
+        import {OrbitControls} from "https://web.cs.manchester.ac.uk/three/three.js-master/examples/jsm/controls/OrbitControls.js"
+        
+        const scene = new THREE.Scene();
+
+        //CAMERA
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 4000 );
+        camera.position.set(0, 30, 500);
+
+        //RENDERER
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.body.appendChild(renderer.domElement);
+
+        //LIGHTS
+        const ambient = new THREE.AmbientLight(0x222222);
+        scene.add(ambient);
+
+        const plight = new THREE.PointLight(0xffffff);
+        scene.add(plight);
+
+        //ORBIT CONTROLS
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05
+
+        //TEXTURE LOADER
+        const textureLoader = new THREE.TextureLoader();
+
+        //BACKGROUND
+        const bgGeometry = new THREE.SphereGeometry(2000, 100, 100);
+        const bgMaterial = new THREE.MeshStandardMaterial({
+            map: textureLoader.load("https://cdn.eso.org/images/screen/eso0932a.jpg"),
+            side: THREE.DoubleSide,
+        });
+        const bg = new THREE.Mesh(bgGeometry, bgMaterial);
+        scene.add(bg);
+
+        //SUN
+        const sunMaterial = new THREE.MeshStandardMaterial({
+            emissive: 0xffd700,
+            emissiveMap : textureLoader.load("https://upload.wikimedia.org/wikipedia/commons/c/cb/Solarsystemscope_texture_2k_sun.jpg"),
+            emissiveIntensity: 1
+        });
+        const sunGeometry = new THREE.SphereGeometry(109, 400, 200);
+        const sunMesh = new THREE.Mesh(sunGeometry, sunMaterial);
+
+        scene.add(sunMesh);
+
+        //EARTH SYSTEM - EARTH, ATMOSPHERE, AXIS LINE, MOON
+        const earthSystem = new THREE.Group();
+
+        const r = 25;
+        const s = 50;
+        const tilt = 0.41;
+
+        //EARTH
+        const earthColor = textureLoader.load("https://upload.wikimedia.org/wikipedia/commons/a/ac/Earthmap1000x500.jpg");
+        const earthBump = textureLoader.load("https://cdnb.artstation.com/p/assets/images/images/013/247/763/large/piyush-singh-earth-specular-map.jpg?1538729921");
+        const earthSpec = textureLoader.load("https://d2t1xqejof9utc.cloudfront.net/pictures/files/179333/original.png?1581359881");
+
+        const earthGeometry = new THREE.SphereGeometry(r, s, s);
+        const earthMaterial = new THREE.MeshPhongMaterial({
+            map: earthColor,
+            bumpMap: earthBump,
+            bumpScale: 0.5,
+            specularMap: earthSpec,
+            shininess: 0.5,
+        });
+        const earthMesh = new THREE.Mesh(earthGeometry, earthMaterial);
+
+        earthMesh.rotation.z = tilt;
+        earthSystem.add(earthMesh);
+
+        //EARTH CLOUD
+        const cloudGeometry = new THREE.SphereGeometry(r + 1, s, s);
+        const cloudMaterial = new THREE.MeshPhongMaterial({
+            map: textureLoader.load("https://upload.wikimedia.org/wikipedia/commons/9/9d/MODIS_Map.jpg"),
+            transparent: true,
+            opacity: 0.5,
+        });
+        const clouds = new THREE.Mesh(cloudGeometry, cloudMaterial);
+
+        clouds.rotation.z = tilt;
+        earthSystem.add(clouds);
+
+        //EARTH AXIS
+        const axisPoints = [
+        new THREE.Vector3(0, 35, 0),
+        new THREE.Vector3(0, -35, 0),
+        ];
+
+        const axisGeom = new THREE.BufferGeometry().setFromPoints(axisPoints);
+        const axis = new THREE.Line(axisGeom,
+            new THREE.LineBasicMaterial({
+                color: 0x330000, transparent: true, opacity: 0.5
+            }));
+
+        axis.rotation.z = tilt;
+
+        earthSystem.add(axis);
+
+        //MOON
+        const moonGeometry = new THREE.SphereGeometry(5, 40, 20);
+        const moonMaterial = new THREE.MeshPhongMaterial({
+            map: textureLoader.load("https://upload.wikimedia.org/wikipedia/commons/e/e4/Dione_PIA08413_moon_only.JPG"),
+            bumpMap: textureLoader.load("https://i.stack.imgur.com/J6RJ4.jpg"),
+            bumpScale: 0.5,
+        });
+        const moonMesh = new THREE.Mesh(moonGeometry, moonMaterial);
+
+        moonMesh.position.set(40, 0, 0);
+        earthSystem.add(moonMesh);
+
+        scene.add(earthSystem);
+
+        //SHADOW MAP
+        renderer.shadowMap.enabled = true;
+        plight.castShadow = true;
+
+        plight.shadow.mapSize.width = 512;
+        plight.shadow.mapSize.height = 512;
+        plight.shadow.camera.near = 150;
+        plight.shadow.camera.far = 350;
+
+        earthMesh.castShadow = true;
+        earthMesh.receiveShadow = true;
+        clouds.receiveShadow = true;
+        moonMesh.castShadow = true;
+        moonMesh.receiveShadow = true;
+
+        //EARTH ORBIT PATH
+        const curve = new THREE.EllipseCurve(
+            0, 0,
+            250, 300,
+            0, 2*Math.PI,
+            );
+        const points = curve.getSpacedPoints(200);
+
+        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+        const material = new THREE.LineBasicMaterial({
+            color: 0x333333, transparent: true, opacity: 0.5
+        });
+
+        const orbit = new THREE.Line(geometry, material);
+        orbit.rotateX(-Math.PI/2);
+        scene.add(orbit);
+
+        //ORBIT SPEED
+        const loopTime = 1;
+        const earthOrbitSpeed = 0.00001;
+        const moonOrbitRadius = 55;
+        const moonOrbitSpeed = 80;
+
+        //ANIMATE
+        animate();
+        function animate(){
+            const time = earthOrbitSpeed * performance.now();
+            const t = (time % loopTime) / loopTime;
+
+            let p = curve.getPoint(t);
+            console.log(p, t);
+
+            earthSystem.position.x = p.x;
+            earthSystem.position.z = p.y;
+
+            moonMesh.position.x = -Math.cos(time * moonOrbitSpeed) *moonOrbitRadius;
+            moonMesh.position.z = -Math.sin(time * moonOrbitSpeed) * moonOrbitRadius;
+
+            sunMesh.rotation.y+=0.0008;
+            earthMesh.rotation.y+=0.0015;
+            clouds.rotation.y+=0.0025;
+            moonMesh.rotation.y+=0.0001;
+
+            renderer.render(scene, camera);
+            requestAnimationFrame(animate);
+        }
+        
+        </script>
+        
+    </body>
+</html>
