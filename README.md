@@ -17,3 +17,10 @@ The coursework assignment involves creating a simple solar system simulation usi
    - **Texturing**: Apply textures to the sun, earth, and moon using provided image resources.
 
 **Submission**: Submit a short video capturing the working solution along with the HTML file via the designated submission area.
+
+**Preview**
+
+
+https://github.com/Shun702/Solar-System/assets/138392252/ac35e013-36aa-469e-b0eb-fc221df22275
+
+
